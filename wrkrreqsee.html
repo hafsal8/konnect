@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Requests</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    #requests {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    .request-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .request-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .request-card p {
+      margin: 6px 0;
+      color: #34495e;
+      font-size: 15px;
+    }
+
+    .request-card b {
+      color: #2c3e50;
+    }
+
+    .buttons {
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+      transition: background 0.2s ease;
+    }
+
+    .btn-accept {
+      background: #2ecc71;
+      color: white;
+    }
+    .btn-accept:hover {
+      background: #27ae60;
+    }
+
+    .btn-reject {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-reject:hover {
+      background: #c0392b;
+    }
+
+    /* Loader spinner */
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 50px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Empty message */
+    .empty {
+      text-align: center;
+      color: #7f8c8d;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>My Job Requests</h1>
+  <div id="requests">
+    <div class="loader"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.firebasestorage.app",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const requestsDiv = document.getElementById("requests");
+
+    // Function to update status
+    async function updateStatus(bookingId, newStatus) {
+      const bookingRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingRef, { status: newStatus });
+      alert(`Booking ${newStatus}!`);
+      loadRequests(); // reload requests after update
+    }
+
+    async function loadRequests() {
+      const user = auth.currentUser;
+      if (!user) {
+        requestsDiv.innerHTML = "<p class='empty'>Please login to see requests</p>";
+        return;
+      }
+
+      const q = query(collection(db, "bookings"), where("workerId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+
+      let requestsHTML = "";
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        requestsHTML += `
+          <div class="request-card">
+            <p><b>Client:</b> ${data.clientEmail}</p>
+            <p><b>Job:</b> ${data.jobRole}</p>
+            <p><b>Location:</b> ${data.location}</p>
+            <p><b>Status:</b> ${data.status}</p>
+            <div class="buttons">
+              <button class="btn btn-accept" onclick="updateStatus('${docSnap.id}', 'accepted')">Accept</button>
+              <button class="btn btn-reject" onclick="updateStatus('${docSnap.id}', 'rejected')">Reject</button>
+            </div>
+          </div>
+        `;
+      });
+
+      requestsDiv.innerHTML = requestsHTML || "<p class='empty'>No requests found</p>";
+    }
+
+    // Expose function to window so inline onclick works
+    window.updateStatus = updateStatus;
+
+    onAuthStateChanged(auth, () => {
+      loadRequests();
+    });
+  </script>
+  
+</body>
+</html>

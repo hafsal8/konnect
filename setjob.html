@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🛠 Set My Job - Konnect</title>
+    <link rel="stylesheet" href="setjob.css">
+</head>
+<body>
+    <div class="job-form-container">
+        <h1>🛠 Set My Job</h1>
+        <p>Tell us what job you do and when you're available.</p>
+
+        <form enctype="multipart/form-data">
+            <label for="category">Select Job Category:</label>
+            <select id="category" required>
+                <option value="">-- Select Category --</option>
+                <option value="medical">Medical</option>
+                <option value="technician">Technician</option>
+                <option value="vehicle">Vehicle Service</option>
+                <option value="cleaning">Cleaning</option>
+                <option value="education">Education</option>
+                <option value="labour">Labour</option>
+            </select>
+
+            <label for="job">Select Your Job:</label>
+            <select id="job" required>
+                <option value="">-- Select Job --</option>
+            </select>
+
+            <label for="location">Enter Your Location:</label>
+            <input type="text" id="location" placeholder="City, Area" required>
+
+            <label for="time">Available Time:</label>
+            <input type="time" id="time" required>
+
+            <label for="job-photo">Upload Photo of Your Work (Optional):</label>
+            <input type="file" id="job-photo" accept="image/*">
+
+            <button type="submit">✅ Save Job Details</button>
+        </form>
+    </div>
+
+    <script>
+        const jobOptions = {
+            medical: ["Doctor", "Nurse", "Lab Technician", "Paramedic"],
+            technician: ["Electrician", "Plumber", "AC Mechanic", "Computer Technician"],
+            vehicle: ["Mechanic", "Puncture Repair", "Fuel Delivery", "Towing Service"],
+            cleaning: ["House Cleaner", "Office Cleaner", "Drainage Cleaner"],
+            education: ["Tuition Teacher", "Online Tutor", "Counsellor"],
+            labour: ["Construction Worker", "Painter", "Welder", "Helper"]
+        };
+
+        const categorySelect = document.getElementById('category');
+        const jobSelect = document.getElementById('job');
+
+        categorySelect.addEventListener('change', () => {
+            const selected = categorySelect.value;
+            jobSelect.innerHTML = '<option value="">-- Select Job --</option>';
+            if (jobOptions[selected]) {
+                jobOptions[selected].forEach(job => {
+                    const option = document.createElement('option');
+                    option.value = job;
+                    option.textContent = job;
+                    jobSelect.appendChild(option);
+                });
+            }
+        });
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+            authDomain: "konnect-7d7a3.firebaseapp.com",
+            projectId: "konnect-7d7a3",
+            storageBucket: "konnect-7d7a3.appspot.com",
+            messagingSenderId: "179662401817",
+            appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // ✅ Helper: fetch worker name from "workers" collection
+        async function getWorkerName(uid) {
+            try {
+                const workerDoc = await getDoc(doc(db, "workers", uid));
+                if (workerDoc.exists()) {
+                    return workerDoc.data().name || "Unnamed Worker";
+                }
+            } catch (err) {
+                console.error("Error fetching worker name:", err);
+            }
+            return "Unknown Worker";
+        }
+
+        async function ensureWorker(user) {
+            const snap = await getDoc(doc(db, "workers", user.uid));
+            if (!snap.exists()) {
+                alert("Only workers can post gigs. Please switch to a worker account.");
+                window.location.href = "workerdashboard.html";
+                throw new Error("Not a worker");
+            }
+        }
+
+        const form = document.querySelector("form");
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                alert("Please log in first.");
+                window.location.href = "login.html?role=worker";
+                return;
+            }
+            await ensureWorker(user);
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const category = document.getElementById("category").value;
+                const job = document.getElementById("job").value;
+                const location = document.getElementById("location").value;
+                const time = document.getElementById("time").value;
+                const photoFile = document.getElementById("job-photo")?.files?.[0];
+
+                try {
+                    let photoUrl = "";
+                    if (photoFile) {
+                        const fileRef = ref(storage, `job-photos/${user.uid}/${Date.now()}_${photoFile.name}`);
+                        await uploadBytes(fileRef, photoFile);
+                        photoUrl = await getDownloadURL(fileRef);
+                    }
+
+                    const workerName = user.displayName || (await getWorkerName(user.uid));
+
+                    await addDoc(collection(db, "jobs"), {
+                        category,
+                        job,
+                        location,
+                        time,
+                        photoUrl,
+                        createdBy: user.uid,
+                        createdAt: serverTimestamp(),
+                        createdByName: workerName,
+                        status: "open"
+                    });
+
+                    alert("✅ Gig saved!");
+                    form.reset();
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ Could not save gig: " + err.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

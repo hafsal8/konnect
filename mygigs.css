@@ -1,0 +1,80 @@
+/* mygigs.css */
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+.gigs-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.gigs-container h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+#gigs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.gig-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e1e1e1;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gig-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+}
+
+.gig-card h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #3498db;
+  font-weight: 600;
+}
+
+.gig-card p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+}
+
+.gig-card p b {
+  color: #2c3e50;
+}
+
+/* Status styling */
+.gig-card p:last-child {
+  font-weight: bold;
+  padding: 6px 10px;
+  display: inline-block;
+  border-radius: 8px;
+}
+
+.gig-card p:last-child:contains("open") {
+  background: #e8f8f5;
+  color: #1abc9c;
+}
+
+.gig-card p:last-child:contains("closed") {
+  background: #fdecea;
+  color: #e74c3c;
+}
