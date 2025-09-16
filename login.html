@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Konnect</title>
+    <link rel="stylesheet" href="cssstyle.css">
+</head>
+<body>
+    <h1>Login to KONNECT</h1>
+
+    <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" required><br><br>
+        <input type="password" id="password" placeholder="Password" required><br><br>
+       <h5>
+  Forgot password? 
+  <a href="forget password.html">Click here</a>
+</h5>
+
+        <button type="submit">Login</button>
+        <br><br>
+        
+        <p>Don't have an account? <a href="register.html">Register</a></p>
+    </form>
+
+    <p id="message"></p>
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+            authDomain: "konnect-7d7a3.firebaseapp.com",
+            databaseURL: "https://konnect-7d7a3-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "konnect-7d7a3",
+            storageBucket: "konnect-7d7a3.firebasestorage.app",
+            messagingSenderId: "179662401817",
+            appId: "1:179662401817:web:f3faf467f5a54232eb5588",
+            measurementId: "G-QM9CCX099Z"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Handle login with role check
+        const loginForm = document.getElementById("loginForm");
+        const message = document.getElementById("message");
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                // Sign in with Firebase Auth
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                message.style.color = "green";
+                message.innerText = "Login successful! Checking role...";
+
+                // Check if user is in the clients collection
+                const clientDoc = await getDoc(doc(db, "clients", user.uid));
+                if (clientDoc.exists()) {
+                    message.innerText = "Welcome Client! Redirecting...";
+                    setTimeout(() => {
+                        window.location.href = "client-dashboard.html";
+                    }, 1000);
+                    return;
+                }
+
+                // Check if user is in the workers collection
+                const workerDoc = await getDoc(doc(db, "workers", user.uid));
+                if (workerDoc.exists()) {
+                    message.innerText = "Welcome Worker! Redirecting...";
+                    setTimeout(() => {
+                        window.location.href = "workerdashboard.html";
+                    }, 1000);
+                    return;
+                }
+
+                // No role found
+                message.style.color = "red";
+                message.innerText = "User role not found. Please contact support.";
+
+            } catch (error) {
+                message.style.color = "red";
+                message.innerText = "Error: " + error.message;
+            }
+        });
+        
+    </script>
+</body>
+</html>

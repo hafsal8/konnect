@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🔎 Search Jobs - Konnect</title>
+  <link rel="stylesheet" href="bookservice.css">
+</head>
+<body>
+  <div class="job-container">
+        <h1>Select Your Job Role</h1>
+        <form id="jobForm">
+            <label for="main-category">Choose your work category:</label><br>
+            <select id="main-category" onchange="updateSubcategories()">
+                <option value="">-- Select Category --</option>
+                <option value="medical">Medical</option>
+                <option value="technician">Technician</option>
+                <option value="vehicle">Vehicle Services</option>
+                <option value="cleaning">Cleaning</option>
+                <option value="education">Education</option>
+                <option value="labour">Labour</option>
+                <option value="other">Other</option>
+            </select><br><br>
+
+            <label for="sub-category">Select Job Role:</label><br>
+            <select id="sub-category">
+                <option value="">-- Select a sub-role --</option>
+            </select><br><br>
+
+            <label for="custom-role">If not listed, write your role:</label><br>
+            <input type="text" id="custom-role" placeholder="Your specific job"><br><br>
+
+            <label for="locationInput">Enter Location:</label><br>
+            <input type="text" id="locationInput" placeholder="eg: Kochi"><br><br>
+
+            <button type="button" id="searchBtn">🔎 Search</button>
+        </form>
+    </div>
+
+    <!-- Results here -->
+    <div id="results" class="results-container"></div>
+
+    <script>
+        const subcategories = {
+            medical: ["Doctor", "Nurse", "Lab Technician", "Paramedic"],
+            technician: ["Electrician", "Plumber", "AC Mechanic", "Computer Technician"],
+            vehicle: ["Mechanic", "Puncture Repair", "Fuel Delivery", "Towing Service"],
+            cleaning: ["House Cleaner", "Office Cleaner", "Drainage Cleaner"],
+            education: ["Tuition Teacher", "Online Tutor", "Counsellor"],
+            labour: ["Construction Worker", "Painter", "Welder", "Helper"],
+        };
+
+        function updateSubcategories() {
+            const mainCat = document.getElementById("main-category").value;
+            const subCat = document.getElementById("sub-category");
+
+            subCat.innerHTML = `<option value="">-- Select a sub-role --</option>`; // Reset
+
+            if (subcategories[mainCat]) {
+                subcategories[mainCat].forEach(job => {
+                    const opt = document.createElement("option");
+                    opt.value = job.toLowerCase();
+                    opt.text = job;
+                    subCat.appendChild(opt);
+                });
+            }
+        }
+    </script>
+
+<!-- Firebase Init -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+    authDomain: "konnect-7d7a3.firebaseapp.com",
+    projectId: "konnect-7d7a3",
+    storageBucket: "konnect-7d7a3.appspot.com",
+    messagingSenderId: "179662401817",
+    appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+  };
+
+  // ✅ Initialize only once
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // make them global (window.) so other scripts can use
+  window.db = db;
+  window.auth = auth;
+</script>
+
+<!-- Search Script -->
+<script type="module">
+  import { collection, query, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const resultsDiv = document.getElementById("results");
+  const searchBtn = document.getElementById("searchBtn");
+
+  searchBtn.addEventListener("click", async () => {
+    const jobRole = document.getElementById("sub-category").value || document.getElementById("custom-role").value.trim().toLowerCase();
+    const location = document.getElementById("locationInput").value.trim().toLowerCase();
+
+    resultsDiv.innerHTML = "<p>Searching...</p>";
+
+    const q = query(collection(window.db, "jobs"));
+    const snapshot = await getDocs(q);
+
+    let found = false;
+    resultsDiv.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      const job = doc.data();
+      if (
+        job.job.toLowerCase().includes(jobRole) &&
+        job.location.toLowerCase().includes(location)
+      ) {
+        found = true;
+        resultsDiv.innerHTML += `
+          <div class="job-card">
+            <h3>${job.job} (${job.category})</h3>
+            <p><b>Location:</b> ${job.location}</p>
+            <p><b>Posted By:</b> ${job.createdByName}</p>
+            <p><b>posted Byid:</b> ${job.createdBy}</p>
+            <p><b>Time:</b> ${job.time}</p> 
+            <p><b>Status:</b> ${job.status}</p>
+            <button onclick="bookService('${job.createdBy}','${job.createdByName}','${job.job}','${job.location}')">
+              📌 Book Now
+            </button>
+          </div>`;
+      }
+    });
+
+    if (!found) resultsDiv.innerHTML = "<p>No jobs found.</p>";
+  });
+</script>
+
+<!-- Book Script -->
+<script type="module">
+  import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  window.bookService = async function(workerId, workerName, jobRole, location) {
+    try {
+      const user = window.auth.currentUser;
+      if (!user) {
+        alert("Please login to book a service!");
+        return;
+      }
+
+      await addDoc(collection(window.db, "bookings"), {
+  workerId: workerId,       // ✅ real worker.uid
+  workerName: workerName,
+  clientId: user.uid,       // ✅ client.uid
+  clientEmail: user.email,
+  jobRole: jobRole,
+  location: location,
+  status: "pending",
+  createdAt: serverTimestamp()
+});
+
+      alert(`Booking request sent to ${workerName}!`);
+    } catch (err) {
+      console.error("Booking failed: ", err);
+      alert("Failed to send booking request.");
+    }
+  }
+</script>
+

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>📋 My Gigs - Konnect</title>
+  <link rel="stylesheet" href="mygigs.css">
+  <style>
+    .gig-card {
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .gig-card h3 {
+      margin: 0;
+    }
+    .delete-btn {
+      background: #e74c3c;
+      color: #fff;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .delete-btn:hover {
+      background: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <div class="gigs-container">
+    <h1>📋 My Gigs</h1>
+    <div id="gigs-list"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      query, 
+      where, 
+      onSnapshot, 
+      deleteDoc, 
+      doc 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.appspot.com",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const gigsList = document.getElementById("gigs-list");
+
+    // 🗑️ Function to delete gig
+    async function deleteGig(id) {
+      if (confirm("Are you sure you want to delete this gig?")) {
+        await deleteDoc(doc(db, "jobs", id));
+        alert("Gig deleted successfully!");
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        alert("Please log in first.");
+        window.location.href = "login.html?role=worker";
+        return;
+      }
+
+      const q = query(collection(db, "jobs"), where("createdBy", "==", user.uid));
+      onSnapshot(q, (snapshot) => {
+        gigsList.innerHTML = "";
+
+        if (snapshot.empty) {
+          gigsList.innerHTML = "<p>No gigs posted yet.</p>";
+          return;
+        }
+
+        snapshot.forEach(docSnap => {
+          const job = docSnap.data();
+          gigsList.innerHTML += `
+            <div class="gig-card">
+              <h3>${job.job} (${job.category})</h3>
+              <p><b>Location:</b> ${job.location}</p>
+              <p><b>Time:</b> ${job.time}</p>
+              <p><b>Status:</b> ${job.status}</p>
+              <button class="delete-btn" onclick="deleteGig('${docSnap.id}')">🗑 Delete</button>
+            </div>
+          `;
+        });
+      });
+    });
+
+    // expose deleteGig globally
+    window.deleteGig = deleteGig;
+  </script>
+</body>
+</html>

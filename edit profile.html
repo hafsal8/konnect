@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Profile - KONNECT</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch/dist/geosearch.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 50%;
+      margin: 40px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input[type="text"], input[type="email"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #map {
+      height: 300px;
+      margin-top: 15px;
+      border-radius: 10px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Edit Profile</h2>
+    <form id="profileForm">
+      <label for="name">Name</label>
+      <input type="text" id="name" placeholder="Enter your name" required>
+
+      <label for="phone">Phone</label>
+      <input type="text" id="phone" placeholder="Enter phone number" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="Enter email" disabled>
+
+      <label for="location">Location</label>
+      <input type="text" id="location" placeholder="Search your location">
+
+      <!-- Map -->
+      <div id="map"></div>
+
+      <button type="submit">Save Profile</button>
+    </form>
+  </div>
+
+  <!-- Map libraries -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-geosearch/dist/geosearch.umd.js"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.appspot.com",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // ---------- MAP ----------
+    const defaultPos = [10.8505, 76.2711]; // Kerala default
+    const map = L.map('map').setView(defaultPos, 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = L.marker(defaultPos, { draggable: true }).addTo(map);
+
+    const provider = new window.GeoSearch.OpenStreetMapProvider();
+    const search = new window.GeoSearch.GeoSearchControl({
+      provider: provider,
+      style: 'bar',
+      autoComplete: true,
+      autoCompleteDelay: 250,
+      showMarker: false,
+    });
+    map.addControl(search);
+
+    map.on('geosearch/showlocation', function(e) {
+      const latlng = e.location;
+      map.setView([latlng.y, latlng.x], 15);
+      marker.setLatLng([latlng.y, latlng.x]);
+      document.getElementById("location").value = latlng.label;
+    });
+
+    // ---------- FIREBASE ----------
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // pre-fill form
+        document.getElementById("email").value = user.email;
+
+        const userDoc = await getDoc(doc(db, "workers", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          document.getElementById("name").value = data.name || "";
+          document.getElementById("phone").value = data.phone || "";
+          document.getElementById("location").value = data.location || "";
+        }
+
+        document.getElementById("profileForm").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          try {
+            await updateDoc(doc(db, "workers", user.uid), {
+              name: document.getElementById("name").value,
+              phone: document.getElementById("phone").value,
+              location: document.getElementById("location").value,
+              email: user.email
+            });
+            alert("Profile updated successfully ✅");
+          } catch (err) {
+            console.error(err);
+            alert("Error updating profile ❌");
+          }
+        });
+      } else {
+        alert("Please log in first");
+        window.location.href = "login.html";
+      }
+    });
+  </script>
+</body>
+</html>
