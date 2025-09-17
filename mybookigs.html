@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Bookings - Konnect</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    #clientBookings {
+      max-width: 800px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+    }
+    .card p {
+      margin: 6px 0;
+    }
+    .status {
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .pending { background: #ffeeba; color: #856404; }
+    .accepted { background: #c3e6cb; color: #155724; }
+    .rejected { background: #f5c6cb; color: #721c24; }
+    .empty {
+      text-align: center;
+      color: #7f8c8d;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📌 My Bookings</h1>
+  <div id="clientBookings"><p class="empty">Loading...</p></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // ✅ Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.firebasestorage.app",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const bookingsDiv = document.getElementById("clientBookings");
+
+    // 🔹 Load client bookings
+    async function loadClientBookings(user) {
+      const q = query(collection(db, "bookings"), where("clientId", "==", user.uid));
+      const snapshot = await getDocs(q);
+
+      let html = "";
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        html += `
+          <div class="card">
+            <p><b>Worker:</b> ${data.workerName || "Unknown"}</p>
+            <p><b>Job:</b> ${data.jobRole}</p>
+            <p><b>Location:</b> ${data.location}</p>
+            <p><b>Status:</b> <span class="status ${data.status}">${data.status}</span></p>
+          </div>
+        `;
+      });
+
+      bookingsDiv.innerHTML = html || "<p class='empty'>No bookings yet</p>";
+    }
+
+    // 🔹 Auth listener
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await loadClientBookings(user);
+      } else {
+        bookingsDiv.innerHTML = "<p class='empty'>Please login to see your bookings</p>";
+      }
+    });
+  </script>
+</body>
+</html>
