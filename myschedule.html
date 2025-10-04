@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Worker Schedule</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    #schedule {
+      max-width: 700px;
+      margin: 20px auto;
+    }
+    .schedule-card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .schedule-card p {
+      margin: 5px 0;
+    }
+    .btn {
+      padding: 8px 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-complete {
+      background: #4CAF50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>My Schedule</h1>
+  <div id="schedule"><p>Loading...</p></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.appspot.com",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const scheduleDiv = document.getElementById("schedule");
+
+    // Load accepted jobs into schedule
+    async function loadSchedule() {
+      const user = auth.currentUser;
+      if (!user) {
+        scheduleDiv.innerHTML = "<p>Please login to see schedule</p>";
+        return;
+      }
+
+      const q = query(
+        collection(db, "bookings"),
+        where("workerId", "==", user.uid),
+        where("status", "==", "accepted")
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      let html = "";
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        html += `
+          <div class="schedule-card">
+            <p><b>Client:</b> ${data.clientEmail}</p>
+            <p><b>Job:</b> ${data.jobRole}</p>
+            <p><b>Location:</b> ${data.location}</p>
+            <p><b>Status:</b> ${data.status}</p>
+            <button class="btn btn-complete" onclick="markCompleted('${docSnap.id}')">Mark Completed</button>
+          </div>
+        `;
+      });
+
+      scheduleDiv.innerHTML = html || "<p>No accepted jobs yet</p>";
+    }
+
+    // Mark job as completed (pending client confirmation)
+    async function markCompleted(bookingId) {
+      const bookingRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingRef, { status: "completedPending" });
+      alert("Job marked as completed, waiting for client confirmation.");
+      loadSchedule();
+    }
+
+    // Expose function so inline onclick works
+    window.markCompleted = markCompleted;
+
+    onAuthStateChanged(auth, () => {
+      loadSchedule();
+    });
+  </script>
+</body>
+</html>

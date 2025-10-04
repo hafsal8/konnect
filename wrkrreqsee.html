@@ -69,7 +69,6 @@
     .btn-accept:hover {
       background: #27ae60;
     }
-
     .btn-reject {
       background: #e74c3c;
       color: white;
@@ -145,6 +144,7 @@
       }
 
       const q = query(collection(db, "bookings"), where("workerId", "==", user.uid));
+      where("status", "==", "requested")
       const querySnapshot = await getDocs(q);
 
       let requestsHTML = "";

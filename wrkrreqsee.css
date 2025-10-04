@@ -236,7 +236,7 @@ body {
 }
 
 .btn-accept {
-    background-color: #059669;
+    background-color: #077959;
     color: white;
 }
 
@@ -245,6 +245,15 @@ body {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+.btn-jobcompleted {
+    background-color: #2d21cc;
+    color: white;
+}
+
+.btn-jobcompleted {
+    background-color: #0e7ec9;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
 .btn-cancel {
     background-color: #dc2626;
     color: white;

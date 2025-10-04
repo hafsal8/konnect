@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Worker Profile</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+      authDomain: "konnect-7d7a3.firebaseapp.com",
+      projectId: "konnect-7d7a3",
+      storageBucket: "konnect-7d7a3.firebasestorage.app",
+      messagingSenderId: "179662401817",
+      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // get workerId from URL
+    const params = new URLSearchParams(window.location.search);
+    const workerId = params.get("workerId");
+
+    async function loadWorkerProfile() {
+      if (!workerId) {
+        document.getElementById("profile").innerHTML = "<p>No worker selected</p>";
+        return;
+      }
+
+      const docRef = doc(db, "workers", workerId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        document.getElementById("profile").innerHTML = `
+          <div class="profile-card">
+            <h2>${data.name}</h2>
+            <p><b>Email:</b> ${data.email}</p>
+            <p><b>Phone:</b> ${data.phone}</p>
+            <p><b>Location:</b> ${data.location}</p>
+            <p><b>Skills:</b> ${data.skills}</p>
+            <p><b>Bio:</b> ${data.bio}</p>
+            <p><b>Jobs Completed:</b> ${data.jobsCompleted}</p>
+            <p><b>Average Rating:</b> ⭐ ${data.avgRating} (${data.ratingCount} ratings)</p>
+          </div>
+        `;
+      } else {
+        document.getElementById("profile").innerHTML = "<p>Worker not found</p>";
+      }
+    }
+
+    loadWorkerProfile();
+  </script>
+
+  <style>
+    body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #f4f6f8;
+}
+    .profile-card {
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    }
+    .profile-card h2 {
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="profile"></div>
+</body>
+</html>

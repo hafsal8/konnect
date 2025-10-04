@@ -64,6 +64,9 @@
             }
         }
     </script>
+    <button>
+      
+    </button>
 
 <!-- Firebase Init -->
 <script type="module">
@@ -116,22 +119,32 @@
         job.location.toLowerCase().includes(location)
       ) {
         found = true;
-        resultsDiv.innerHTML += `
-          <div class="job-card">
-            <h3>${job.job} (${job.category})</h3>
-            <p><b>Location:</b> ${job.location}</p>
-            <p><b>Posted By:</b> ${job.createdByName}</p>
-            <p><b>posted Byid:</b> ${job.createdBy}</p>
-            <p><b>Time:</b> ${job.time}</p> 
-            <p><b>Status:</b> ${job.status}</p>
-            <button onclick="bookService('${job.createdBy}','${job.createdByName}','${job.job}','${job.location}')">
-              📌 Book Now
-            </button>
-          </div>`;
+       resultsDiv.innerHTML += `
+  <div class="job-card">
+    <!-- Profile button at top-left -->
+    <a href="wrkrprofile.html?workerId=${job.createdBy}" class="profile-btn" title="View Profile">
+      👤
+    </a>
+
+    <div class="job-details">
+      <h3>${job.job} (${job.category})</h3>
+      <p><b>Location:</b> ${job.location}</p>
+      <p><b>Posted By:</b> ${job.createdByName}</p>
+      <p><b>posted Byid:</b> ${job.createdBy}</p>
+      <p><b>Time:</b> ${job.time}</p> 
+      <p><b>Status:</b> ${job.status}</p>
+    </div>
+    
+    <button onclick="bookService('${job.createdBy}','${job.createdByName}','${job.job}','${job.location}')">
+      📌 Book Now
+    </button>
+  </div>`;
+
+
       }
     });
 
-    if (!found) resultsDiv.innerHTML = "<p>No jobs found.</p>";
+    if (!found) resultsDiv.innerHTML = "<p>this job service not avilable in your location.</p>";
   });
 </script>
 
