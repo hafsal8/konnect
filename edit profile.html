@@ -67,6 +67,12 @@
       <label for="email">Email</label>
       <input type="email" id="email" placeholder="Enter email" disabled>
 
+      <label for="skills">skills</label>
+      <input type="text" id="skills" placeholder="Describe your skills" required>
+
+      <label for="bio">bio</label>
+      <input type="text" id="bio" placeholder="About you" required>
+
       <label for="location">Location</label>
       <input type="text" id="location" placeholder="Search your location">
 
@@ -133,28 +139,34 @@
         document.getElementById("email").value = user.email;
 
         const userDoc = await getDoc(doc(db, "workers", user.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          document.getElementById("name").value = data.name || "";
-          document.getElementById("phone").value = data.phone || "";
-          document.getElementById("location").value = data.location || "";
-        }
+if (userDoc.exists()) {
+  const data = userDoc.data();
+  document.getElementById("name").value = data.name || "";
+  document.getElementById("phone").value = data.phone || "";
+  document.getElementById("location").value = data.location || "";
+  document.getElementById("skills").value = data.skills || "";
+  document.getElementById("bio").value = data.bio || "";
+}
 
-        document.getElementById("profileForm").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          try {
-            await updateDoc(doc(db, "workers", user.uid), {
-              name: document.getElementById("name").value,
-              phone: document.getElementById("phone").value,
-              location: document.getElementById("location").value,
-              email: user.email
-            });
-            alert("Profile updated successfully ✅");
-          } catch (err) {
-            console.error(err);
-            alert("Error updating profile ❌");
-          }
-        });
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await updateDoc(doc(db, "workers", user.uid), {
+      name: document.getElementById("name").value,
+      phone: document.getElementById("phone").value,
+      location: document.getElementById("location").value,
+      skills: document.getElementById("skills").value,
+      bio: document.getElementById("bio").value,
+      email: user.email
+    });
+
+    alert("Profile updated successfully ✅");
+  } catch (err) {
+    console.error(err);
+    alert("Error updating profile ❌");
+  }
+});
+
       } else {
         alert("Please log in first");
         window.location.href = "login.html";

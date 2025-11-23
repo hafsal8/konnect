@@ -1,84 +1,271 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Worker Profile</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
-      authDomain: "konnect-7d7a3.firebaseapp.com",
-      projectId: "konnect-7d7a3",
-      storageBucket: "konnect-7d7a3.firebasestorage.app",
-      messagingSenderId: "179662401817",
-      appId: "1:179662401817:web:f3faf467f5a54232eb5588"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // get workerId from URL
-    const params = new URLSearchParams(window.location.search);
-    const workerId = params.get("workerId");
-
-    async function loadWorkerProfile() {
-      if (!workerId) {
-        document.getElementById("profile").innerHTML = "<p>No worker selected</p>";
-        return;
-      }
-
-      const docRef = doc(db, "workers", workerId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        document.getElementById("profile").innerHTML = `
-          <div class="profile-card">
-            <h2>${data.name}</h2>
-            <p><b>Email:</b> ${data.email}</p>
-            <p><b>Phone:</b> ${data.phone}</p>
-            <p><b>Location:</b> ${data.location}</p>
-            <p><b>Skills:</b> ${data.skills}</p>
-            <p><b>Bio:</b> ${data.bio}</p>
-            <p><b>Jobs Completed:</b> ${data.jobsCompleted}</p>
-            <p><b>Average Rating:</b> ⭐ ${data.avgRating} (${data.ratingCount} ratings)</p>
-          </div>
-        `;
-      } else {
-        document.getElementById("profile").innerHTML = "<p>Worker not found</p>";
-      }
-    }
-
-    loadWorkerProfile();
-  </script>
+  <title>Worker Profile - Konnect</title>
 
   <style>
     body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: #f4f6f8;
-}
-    .profile-card {
-      max-width: 500px;
-      margin: 40px auto;
+      margin: 0;
       padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+    }
+
+    .profile-container {
+      max-width: 800px;
+      margin: auto;
       background: #fff;
+      padding: 25px;
       border-radius: 12px;
-      box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .profile-card h2 {
-      color: #007bff;
+
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #2c3e50;
     }
+
+    .rating-stars {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 28px;
+      color: gold;
+    }
+
+    .details p {
+      font-size: 16px;
+      margin: 5px 0;
+    }
+
+    .section-title {
+      font-size: 20px;
+      margin-top: 20px;
+      color: #2c3e50;
+      border-left: 4px solid #3498db;
+      padding-left: 10px;
+    }
+
+    .review-card {
+      background: #ffffff;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border-left: 4px solid #27ae60;
+      box-shadow: 0px 3px 8px rgba(0,0,0,0.05);
+    }
+
+    .review-card .review-rating {
+      font-size: 18px;
+      color: gold;
+    }
+
   </style>
 </head>
+
 <body>
-  <div id="profile"></div>
+
+<div class="profile-container">
+
+  <h2 id="workerName">Loading...</h2>
+
+  <div class="rating-stars" id="workerRating"></div>
+
+  <div class="details">
+    <p><b>Email:</b> <span id="workerEmail"></span></p>
+    <p><b>Phone:</b> <span id="workerPhone"></span></p>
+    <p><b>Location:</b> <span id="workerLocation"></span></p>
+    <p><b>Skills:</b> <span id="workerSkills"></span></p>
+    <p><b>Bio:</b> <span id="workerBio"></span></p>
+    <p><b>Jobs Completed:</b> <span id="workerJobs"></span></p>
+  </div>
+
+  <h3 class="section-title">⭐ Ratings & Reviews</h3>
+  <div id="reviewsList">
+    <p>Loading reviews...</p>
+  </div>
+
+</div>
+
+
+<script type="module">
+
+// ---------------- FIREBASE ----------------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.appspot.com",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ------------ GET WORKER ID ----------------
+const workerId = new URLSearchParams(window.location.search).get("id");
+
+if (!workerId) {
+  alert("Worker ID missing in URL");
+}
+
+
+
+// ------------ LOAD WORKER PROFILE ------------
+// ------------ SAFE: LOAD COMPLETED JOBS (fallback method) ------------
+async function loadCompletedJobs() {
+  try {
+    console.log("Worker ID from URL:", workerId);
+
+    // load all bookings and filter client-side (works even if Firestore indexing/naming differs)
+    const snap = await getDocs(collection(db, "bookings"));
+
+    let count = 0;
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+
+      // debug print for each booking (helps to see what fields look like)
+      console.log("CHECK BOOKING:", docSnap.id, data.workerId, data.status);
+
+      // flexible matching: compare workerId as string + tolerant status checking
+      if (String(data.workerId) === String(workerId) &&
+         typeof data.status === "string" &&
+         data.status.toLowerCase().includes("completed")) {
+        count++;
+      }
+    });
+
+    console.log("FINAL COMPLETED JOBS COUNT =", count);
+    document.getElementById("workerJobs").innerText = count;
+  } catch (err) {
+    console.error("Error in loadCompletedJobs:", err);
+    document.getElementById("workerJobs").innerText = "0";
+  }
+}
+
+
+// ------------ SAFE: LOAD WORKER PROFILE (with robust rating handling) ------------
+async function loadWorkerProfile() {
+  try {
+    const ref = doc(db, "workers", workerId);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      document.body.innerHTML = "<h2>Worker Not Found</h2>";
+      return;
+    }
+
+    const w = snap.data();
+
+    document.getElementById("workerName").innerText = w.name || "Unnamed";
+    document.getElementById("workerEmail").innerText = w.email || "";
+    document.getElementById("workerPhone").innerText = w.phone || "";
+    document.getElementById("workerLocation").innerText = w.location || "";
+    document.getElementById("workerSkills").innerText = w.skills || "Not added";
+    document.getElementById("workerBio").innerText = w.bio || "No bio written";
+
+    // ===== RATING: validate & clamp before using repeat() =====
+    try {
+      // If avgRating missing or invalid, fallback to 0
+      let avg = Number(w.avgRating);
+      if (!isFinite(avg)) avg = 0;
+
+      // clamp to [0, 5]
+      avg = Math.max(0, Math.min(5, avg));
+
+      // rounded for star display
+      const rounded = Math.round(avg);
+
+      // build stars safely (rounded is guaranteed 0..5)
+      const starHTML = "★".repeat(rounded) + "☆".repeat(5 - rounded);
+
+      // show rating (use avg to one decimal)
+      document.getElementById("workerRating").innerHTML = `${starHTML}<br>(${avg.toFixed(1)} / 5)`;
+    } catch (ratingErr) {
+      // If anything goes wrong here, don't let it break the page
+      console.error("Rating render error:", ratingErr);
+      document.getElementById("workerRating").innerText = "No rating";
+    }
+
+    // load completed jobs and reviews AFTER safe rating render
+    await loadCompletedJobs();
+    await loadWorkerReviews();
+
+  } catch (err) {
+    console.error("Error in loadWorkerProfile:", err);
+    document.body.innerHTML = "<h2>Unable to load profile</h2>";
+  }
+}
+
+
+
+
+
+// ------------ LOAD WORKER REVIEWS ------------
+// ------------ LOAD WORKER REVIEWS (WITH JOB NAME) ------------
+async function loadWorkerReviews() {
+  try {
+    const q = query(
+      collection(db, "ratings"),
+      where("workerId", "==", workerId)
+    );
+
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      document.getElementById("reviewsList").innerHTML = "<p>No reviews yet</p>";
+      return;
+    }
+
+    let html = "";
+
+    // Use for..of so we can use await safely
+    for (const r of snap.docs) {
+      const d = r.data();
+
+      // --- Fetch Job Name from bookings ---
+      let jobName = "Unknown Job";
+      try {
+        const bookingRef = doc(db, "bookings", d.bookingId);
+        const bookingSnap = await getDoc(bookingRef);
+
+        if (bookingSnap.exists()) {
+          jobName = bookingSnap.data().jobRole || "Unknown Job";
+        }
+      } catch (err) {
+        console.log("Error getting booking:", err);
+      }
+
+      // --- Build review HTML ---
+      html += `
+        <div class="review-card">
+          <p><b>Job:</b> ${jobName}</p>
+          <p class="review-rating">⭐ ${d.rating} / 5</p>
+          <p><b>Review:</b> ${d.review || "No review provided"}</p>
+          <p><b>Date:</b> ${d.createdAt?.toDate().toLocaleString()}</p>
+        </div>
+      `;
+    }
+
+    document.getElementById("reviewsList").innerHTML = html;
+
+  } catch (err) {
+    console.error("Error in loadWorkerReviews:", err);
+    document.getElementById("reviewsList").innerHTML =
+      "<p>Error loading reviews</p>";
+  }
+}
+loadWorkerProfile();
+
+
+</script>
+
 </body>
 </html>

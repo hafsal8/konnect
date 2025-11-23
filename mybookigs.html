@@ -47,83 +47,331 @@
       font-size: 16px;
       margin-top: 20px;
     }
+
+  /* Popup Background */
+#ratingPopup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Popup Box */
+.popup-box {
+  background: #fff;
+  width: 320px;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* Star Rating */
+.stars span {
+  font-size: 30px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.stars span.active {
+  color: gold;
+}
+
+/* Submit Btn */
+#submitRating {
+  padding: 8px 14px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* Popup Background */
+.popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Popup Box */
+.popup-content {
+  background: #fff;
+  padding: 25px 30px;
+  border-radius: 12px;
+  width: 350px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  animation: popupShow 0.25s ease-out;
+}
+
+/* Smooth Popup Animation */
+@keyframes popupShow {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* Rating Stars */
+.stars {
+  margin: 10px 0 15px 0;
+}
+
+.stars span {
+  font-size: 28px;
+  cursor: pointer;
+  color: #ccc;
+  margin: 3px;
+  transition: 0.2s;
+}
+
+.stars span.active,
+.stars span:hover,
+.stars span:hover ~ span {
+  color: #f1c40f;
+}
+
+/* Review Box */
+#reviewText {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin: 10px 0 15px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+}
+
+/* Submit Button */
+.rating-btn {
+  width: 100%;
+  background: #27ae60;
+  padding: 10px;
+  color: white;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.rating-btn:hover {
+  background: #219150;
+}
+
+
   </style>
 </head>
 <body>
   <h1>📌 My Bookings</h1>
   <div id="clientBookings"><p class="empty">Loading...</p></div>
+<!-- Rating Popup -->
+<div id="ratingPopup" class="popup">
+  <div class="popup-content">
+
+    <h3>Rate Worker</h3>
+
+    <div class="stars">
+      <span data-val="1">★</span>
+      <span data-val="2">★</span>
+      <span data-val="3">★</span>
+      <span data-val="4">★</span>
+      <span data-val="5">★</span>
+    </div>
+
+    <textarea id="reviewText" placeholder="Write your review..." rows="3"></textarea>
+
+    <button id="submitRating" class="rating-btn">Submit Rating</button>
+  </div>
+</div>
+
 
  <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  // ✅ Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
-    authDomain: "konnect-7d7a3.firebaseapp.com",
-    projectId: "konnect-7d7a3",
-    storageBucket: "konnect-7d7a3.firebasestorage.app",
-    messagingSenderId: "179662401817",
-    appId: "1:179662401817:web:f3faf467f5a54232eb5588"
-  };
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getFirestore, collection, query, where, getDocs, 
+  doc, updateDoc, getDoc, setDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
+/* ----------------- FIREBASE CONFIG ----------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.firebasestorage.app",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
 
-  const bookingsDiv = document.getElementById("clientBookings");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-  // 🔹 Update booking status
-  async function updateStatus(bookingId, newStatus) {
-    const bookingRef = doc(db, "bookings", bookingId);
-    await updateDoc(bookingRef, { status: newStatus });
-    alert("Booking marked as " + newStatus);
-    loadClientBookings(auth.currentUser); // refresh list
-  }
+const bookingsDiv = document.getElementById("clientBookings");
 
-  // 🔹 Load client bookings
-  async function loadClientBookings(user) {
-    const q = query(collection(db, "bookings"), where("clientId", "==", user.uid));
-    const snapshot = await getDocs(q);
+/* ----------------- RATING GLOBAL VALUES ----------------- */
+let selectedRating = 0;
+let currentBookingId = "";
+let currentWorkerId = "";
 
-    let html = "";
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
 
-      let actionBtn = "";
-      if (data.status === "job completed") {
-        actionBtn = `<button class="btn btn-completed" onclick="updateStatus('${docSnap.id}', 'completed')">Confirm Completed ✅</button>`;
-      } else {
-        actionBtn = `<button class="btn btn-disabled" disabled>Waiting for Worker...</button>`;
-      }
+/* ----------------- OPEN RATING POPUP ----------------- */
+window.openRatingPopup = function (bookingId, workerId) {
+  currentBookingId = bookingId;
+  currentWorkerId = workerId;
+  selectedRating = 0;
 
-      html += `
-        <div class="card">
-          <p><b>Worker:</b> ${data.workerName || "Unknown"}</p>
-          <p><b>Job:</b> ${data.jobRole}</p>
-          <p><b>Location:</b> ${data.location}</p>
-          <p><b>Status:</b> <span class="status ${data.status}">${data.status}</span></p>
-          ${actionBtn}
-        </div>
-      `;
-    });
+  document.querySelectorAll(".stars span").forEach(s => s.classList.remove("active"));
+  document.getElementById("ratingPopup").style.display = "flex";
+};
 
-    bookingsDiv.innerHTML = html || "<p class='empty'>No bookings yet</p>";
-  }
 
-  // 🔹 Auth listener
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      await loadClientBookings(user);
-    } else {
-      bookingsDiv.innerHTML = "<p class='empty'>Please login to see your bookings</p>";
+/* ----------------- STAR CLICK ----------------- */
+document.querySelectorAll(".stars span").forEach(star => {
+  star.addEventListener("click", () => {
+    selectedRating = parseInt(star.dataset.val);
+
+    document.querySelectorAll(".stars span").forEach(s => s.classList.remove("active"));
+    for (let i = 0; i < selectedRating; i++) {
+      document.querySelectorAll(".stars span")[i].classList.add("active");
     }
   });
+});
 
-  // Expose update function to window
-  window.updateStatus = updateStatus;
+
+/* ----------------- SUBMIT RATING ----------------- */
+document.getElementById("submitRating").addEventListener("click", async () => {
+  if (selectedRating === 0) {
+    alert("Please select a rating!");
+    return;
+  }
+
+  const reviewText = document.getElementById("reviewText").value;
+
+  /* 1️⃣ Save rating in booking */
+  await updateDoc(doc(db, "bookings", currentBookingId), {
+    rating: selectedRating,
+    review: reviewText
+  });
+
+  /* 2️⃣ Save rating + review in workers/{id}/ratings/{bookingId} */
+  await setDoc(doc(db, "workers", currentWorkerId, "ratings", currentBookingId), {
+    bookingId: currentBookingId,
+    rating: selectedRating,
+    review: reviewText,
+    createdAt: new Date()
+  });
+
+  /* 3️⃣ Save in global ratings collection */
+  await setDoc(doc(db, "ratings", currentBookingId), {
+    workerId: currentWorkerId,
+    bookingId: currentBookingId,
+    rating: selectedRating,
+    review: reviewText,
+    clientId: auth.currentUser.uid,
+    createdAt: new Date()
+  });
+
+  /* 4️⃣ Update worker summary rating */
+  const workerRef = doc(db, "workers", currentWorkerId);
+  const workerSnap = await getDoc(workerRef);
+
+  let ratingSum = workerSnap.data()?.ratingSum || 0;
+  let ratingCount = workerSnap.data()?.ratingCount || 0;
+
+  ratingSum += selectedRating;
+  ratingCount++;
+
+  await updateDoc(workerRef, {
+    ratingSum,
+    ratingCount,
+    avgRating: ratingSum / ratingCount
+  });
+
+  alert("Thanks for your feedback!");
+
+  document.getElementById("reviewText").value = "";
+  document.getElementById("ratingPopup").style.display = "none";
+
+  loadClientBookings(auth.currentUser);
+});
+
+
+
+/* ----------------- UPDATE STATUS ----------------- */
+window.updateStatus = async function (bookingId, newStatus) {
+  await updateDoc(doc(db, "bookings", bookingId), { status: newStatus });
+  loadClientBookings(auth.currentUser);
+};
+
+
+/* ----------------- LOAD CLIENT BOOKINGS ----------------- */
+async function loadClientBookings(user) {
+  const q = query(collection(db, "bookings"), where("clientId", "==", user.uid));
+  const snapshot = await getDocs(q);
+
+  let html = "";
+
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data();
+
+    let actionBtn = "";
+
+    if (data.status === "workDone") {
+      actionBtn = `
+        <button onclick="updateStatus('${docSnap.id}','completed')">
+          Confirm Completion ✅
+        </button>`;
+    } 
+    else if (data.status === "completed") {
+      actionBtn = `
+        <button onclick="openRatingPopup('${docSnap.id}','${data.workerId}')">
+          Rate Worker ⭐
+        </button>`;
+    } 
+    else {
+      actionBtn = `<button disabled>Waiting for worker...</button>`;
+    }
+
+    html += `
+      <div class="card">
+        <p><b>Worker:</b> ${data.workerName}</p>
+        <p><b>Job:</b> ${data.jobRole}</p>
+        <p><b>Location:</b> ${data.location}</p>
+        <p><b>Status:</b> ${data.status}</p>
+        ${actionBtn}
+      </div>
+    `;
+  });
+
+  bookingsDiv.innerHTML = html || "<p>No bookings yet</p>";
+}
+
+
+/* ----------------- FIREBASE AUTH ----------------- */
+onAuthStateChanged(auth, (user) => {
+  if (user) loadClientBookings(user);
+  else bookingsDiv.innerHTML = "<p>Please login</p>";
+});
+
 </script>
+
+
 
 </body>
 </html>

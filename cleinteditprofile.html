@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit Profile – Konnect</title>
+
+  <!-- Leaflet + GeoSearch CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch/dist/geosearch.css">
+
+  <style>
+    body {
+      background: #eef2f7;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .wrapper {
+      max-width: 900px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: 1.1fr 1.3fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 7px 18px rgba(0,0,0,0.12);
+    }
+
+    h2 {
+      text-align: center;
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    input[disabled] {
+      background: #f3f3f3;
+      color: #777;
+    }
+
+    button {
+      padding: 11px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .save-btn {
+      background: #007bff;
+      color: #fff;
+      width: 100%;
+      margin-top: 18px;
+    }
+
+    .save-btn:hover {
+      background: #0056b3;
+    }
+
+    .back-btn {
+      background: #6c757d;
+      color: #fff;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .back-btn:hover {
+      background: #555e64;
+    }
+
+    #mapEdit {
+      width: 100%;
+      height: 100%;
+      min-height: 380px;
+      border-radius: 10px;
+    }
+
+    .map-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 800px) {
+      .wrapper {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- LEFT: FORM -->
+  <div class="card">
+    <h2>Edit Profile</h2>
+
+    <form id="profileForm">
+      <label for="name">Name</label>
+      <input type="text" id="name" placeholder="Enter your name" required>
+
+      <label for="phone">Phone</label>
+      <input type="text" id="phone" placeholder="Enter phone number" required>
+
+      <label for="email">Email (login)</label>
+      <input type="email" id="email" disabled>
+
+      <label for="location">Location</label>
+      <input type="text" id="location" placeholder="Search or pick on map">
+
+      <button type="submit" class="save-btn">💾 Save Changes</button>
+      <button type="button" class="back-btn" onclick="window.location.href='cleintprofile.html';">
+  ← Back to Profile
+</button>
+
+
+    </form>
+  </div>
+
+  <!-- RIGHT: MAP -->
+  <div class="card">
+    <div class="map-title">📍 Pick Your Location</div>
+    <div id="mapEdit"></div>
+  </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-geosearch/dist/geosearch.umd.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.appspot.com",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let map, marker;
+let selectedLocation = "";  // store as string
+
+// ---------- SETUP MAP ----------
+const defaultPos = [10.8505, 76.2711]; // Kerala default
+
+map = L.map("mapEdit").setView(defaultPos, 9);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+
+marker = L.marker(defaultPos, { draggable: true }).addTo(map);
+
+// When marker dragged, reverse geocode to human-readable string
+marker.on("dragend", async () => {
+  const pos = marker.getLatLng();
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    selectedLocation = data.display_name || `${pos.lat}, ${pos.lng}`;
+    document.getElementById("location").value = selectedLocation;
+  } catch (e) {
+    console.error(e);
+    selectedLocation = `${pos.lat}, ${pos.lng}`;
+    document.getElementById("location").value = selectedLocation;
+  }
+});
+
+// Search control
+const provider = new window.GeoSearch.OpenStreetMapProvider();
+const search = new window.GeoSearch.GeoSearchControl({
+  provider,
+  style: "bar",
+  autoComplete: true,
+  autoClose: true,
+});
+map.addControl(search);
+
+// When location chosen from search
+map.on("geosearch/showlocation", (e) => {
+  map.setView([e.location.y, e.location.x], 15);
+  marker.setLatLng([e.location.y, e.location.x]);
+  selectedLocation = e.location.label;
+  document.getElementById("location").value = selectedLocation;
+});
+
+// ---------- LOAD EXISTING CLIENT DATA ----------
+let currentUser = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    alert("Please login first");
+    location.href = "login.html";
+    return;
+  }
+
+  currentUser = user;
+
+  document.getElementById("email").value = user.email || "";
+
+  const ref = doc(db, "clients", user.uid);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    const c = snap.data();
+
+    document.getElementById("name").value     = c.name || "";
+    document.getElementById("phone").value    = c.phone || "";
+    document.getElementById("location").value = c.location || "";
+
+    // If location exists, you *could* try centering map using geocoding
+    // but to keep it simple we leave map at default and only show string.
+  }
+});
+
+// ---------- SAVE PROFILE ----------
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  if (!currentUser) return;
+
+  const name      = document.getElementById("name").value.trim();
+  const phone     = document.getElementById("phone").value.trim();
+  const locInput  = document.getElementById("location").value.trim();
+
+  const saveLocationString = selectedLocation || locInput || "";
+
+  const ref = doc(db, "clients", currentUser.uid);
+  const snap = await getDoc(ref);
+
+  const dataToSave = {
+    name,
+    phone,
+    location: saveLocationString,
+    email: currentUser.email
+  };
+
+  try {
+    if (snap.exists()) {
+      await updateDoc(ref, dataToSave);
+    } else {
+      await setDoc(ref, dataToSave);
+    }
+    alert("Profile updated successfully ✅");
+  } catch (err) {
+    console.error(err);
+    alert("Error updating profile ❌");
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Emergency Help – Konnect</title>
+  <style>
+    body {
+      background: #f5f7fa;
+      font-family: Arial;
+      padding: 30px;
+      text-align: center;
+    }
+    .container {
+      background: white;
+      width: 450px;
+      margin: auto;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    select, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #ff4747;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #d93232;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🚨 Emergency Help</h2>
+  <p>Choose the emergency type below:</p>
+
+  <select id="emType">
+    <option value="Electrician">⚡ Electricity Issue</option>
+    <option value="Plumber">🚰 Water Leakage</option>
+    <option value="fuel delivery">🔒 fuel delivery</option>
+    <option value="AC Technician">❄ AC/Fridge Emergency</option>
+  </select>
+
+  <button id="sendBtn">Request Help Now 🚑</button>
+
+  <p id="msg"></p>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, addDoc, collection, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+    authDomain: "konnect-7d7a3.firebaseapp.com",
+    projectId: "konnect-7d7a3",
+    storageBucket: "konnect-7d7a3.appspot.com",
+    messagingSenderId: "179662401817",
+    appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  document.getElementById("sendBtn").onclick = async function () {
+    const emergencyType = document.getElementById("emType").value;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        alert("Please login first!");
+        return;
+      }
+
+      const clientId = user.uid;
+
+      // ✅ Fetch location from Firestore
+      const clientRef = doc(db, "clients", clientId);
+      const clientSnap = await getDoc(clientRef);
+
+      let location = "Unknown";
+      if (clientSnap.exists()) {
+        location = clientSnap.data().location || "Unknown";
+      }
+
+      // ✅ Store emergency request
+      await addDoc(collection(db, "emergency_requests"), {
+        clientId,
+        emergencyType,
+        location,
+        createdAt: new Date(),
+        status: "pending",
+        assignedWorkerId: ""
+      });
+
+      document.getElementById("msg").innerHTML =
+        "<b style='color:green;'>Emergency request sent! A worker will respond soon.</b>";
+    });
+  };
+</script>
+
+</body>
+</html>

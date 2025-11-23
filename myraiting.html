@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Ratings – Konnect</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .summary {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #eaf7ff;
+      border-radius: 8px;
+    }
+    .review-card {
+      background: #fff;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #3498db;
+      box-shadow: 0px 3px 8px rgba(0,0,0,0.05);
+    }
+    .stars {
+      font-size: 20px;
+      color: gold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h2>My Ratings</h2>
+
+  <div id="ratingSummary" class="summary">
+    Loading summary...
+  </div>
+
+  <h3>All Job Reviews</h3>
+  <div id="ratingsList">Loading ratings...</div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getFirestore, collection, query, where, getDocs, doc, getDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.appspot.com",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const workerId = new URLSearchParams(window.location.search).get("id");
+
+// ---------------- LOAD TOTAL SUMMARY ----------------
+async function loadSummary() {
+  const ratingsSnap = await getDocs(
+    query(collection(db, "ratings"), where("workerId", "==", workerId))
+  );
+
+  if (ratingsSnap.empty) {
+    document.getElementById("ratingSummary").innerText = "No ratings yet";
+    return;
+  }
+
+  let sum = 0;
+  ratingsSnap.forEach(doc => { sum += doc.data().rating });
+
+  const avg = (sum / ratingsSnap.size).toFixed(1);
+
+  document.getElementById("ratingSummary").innerHTML = `
+    <h3>⭐ ${avg} / 5</h3>
+    <p>Based on ${ratingsSnap.size} completed jobs</p>
+  `;
+}
+
+// ---------------- LOAD EACH JOB'S RATING ----------------
+async function loadRatings() {
+  const qSnap = await getDocs(
+    query(collection(db, "ratings"), where("workerId", "==", workerId))
+  );
+
+  let html = "";
+
+  for (const docSnap of qSnap.docs) {
+    const d = docSnap.data();
+
+    // get job name from bookings
+    let jobName = "Unknown";
+    const bookingSnap = await getDoc(doc(db, "bookings", d.bookingId));
+    if (bookingSnap.exists()) {
+      jobName = bookingSnap.data().jobRole;
+    }
+
+    const stars = "★".repeat(d.rating) + "☆".repeat(5 - d.rating);
+
+    html += `
+      <div class="review-card">
+        <p><b>Job:</b> ${jobName}</p>
+        <p class="stars">${stars}</p>
+        <p><b>Review:</b> ${d.review || "No review"}</p>
+        <p><b>Date:</b> ${d.createdAt?.toDate().toLocaleString()}</p>
+      </div>
+    `;
+  }
+
+  document.getElementById("ratingsList").innerHTML = html;
+}
+
+loadSummary();
+loadRatings();
+
+</script>
+</body>
+</html>

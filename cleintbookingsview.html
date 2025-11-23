@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>My Booking History – Konnect</title>
+<style>
+  body { background:#f4f6f9; font-family:Arial; padding:20px; }
+  .container { max-width:800px; margin:auto; background:white; padding:20px;
+    border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+  .card {
+    background:#fff; padding:15px; margin-top:12px; border-radius:8px;
+    border-left:4px solid #3498db; box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h2>📜 My Booking History</h2>
+  <div id="historyList">Loading...</div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.appspot.com",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, async user => {
+  if (!user) return;
+
+  const qSnap = await getDocs(
+    query(collection(db, "bookings"), where("clientId", "==", user.uid))
+  );
+
+  let html = "";
+  qSnap.forEach(b => {
+    const d = b.data();
+    html += `
+      <div class="card">
+        <p><b>Worker:</b> ${d.workerName}</p>
+        <p><b>Job:</b> ${d.jobRole}</p>
+        <p><b>Date:</b> ${d.createdAt?.toDate().toLocaleString()}</p>
+        <p><b>Status:</b> ${d.status}</p>
+        <p><b>Rating:</b> ${d.rating || "Not rated"}</p>
+      </div>
+    `;
+  });
+
+  document.getElementById("historyList").innerHTML = html || "No bookings yet.";
+});
+</script>
+
+</body>
+</html>

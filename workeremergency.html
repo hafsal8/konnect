@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Emergency Requests – Konnect</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .request-card {
+      background: #fff;
+      margin-top: 15px;
+      padding: 15px;
+      border-left: 5px solid #e74c3c;
+      border-radius: 8px;
+      box-shadow: 0px 3px 10px rgba(0,0,0,0.08);
+    }
+    .btn {
+      padding: 10px 15px;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-accept { background: #2ecc71; float: right; }
+    .btn-accept:hover { background: #27ae60; }
+
+    .btn-complete { background: #3498db; float: right; }
+    .btn-complete:hover { background: #2980b9; }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>🚨 Emergency Requests</h2>
+  <div id="reqList">Loading emergency requests...</div>
+</div>
+
+<!-- Emergency alert sound -->
+<audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, query, where, onSnapshot,
+  doc, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzK5umphNqLVacI8IpqLuA_1mpi0fUofU",
+  authDomain: "konnect-7d7a3.firebaseapp.com",
+  projectId: "konnect-7d7a3",
+  storageBucket: "konnect-7d7a3.appspot.com",
+  messagingSenderId: "179662401817",
+  appId: "1:179662401817:web:f3faf467f5a54232eb5588"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let firstLoad = true; // To avoid sound playing on page load
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("reqList").innerHTML = "Please login.";
+    return;
+  }
+
+  const workerId = user.uid;
+
+  loadLiveRequests(workerId); // Real-time updates
+});
+
+
+// ========== REAL-TIME LIVE UPDATES =============
+function loadLiveRequests(workerId) {
+  const q = query(
+    collection(db, "emergency_requests"),
+    where("status", "!=", "completed") // Only active emergencies
+  );
+
+  onSnapshot(q, (snap) => {
+    let html = "";
+    let newEmergency = false;
+
+    snap.forEach(req => {
+      const d = req.data();
+
+      // Detect new request for sound alert
+      if (!firstLoad && d.status === "pending") {
+        newEmergency = true;
+      }
+
+      html += `
+        <div class="request-card">
+          <p><b>Type:</b> ${d.emergencyType}</p>
+          <p><b>Location:</b> ${d.location}</p>
+          <p><b>Requested At:</b> ${d.createdAt.toDate().toLocaleString()}</p>
+      `;
+
+      // Accept button (only pending)
+      if (d.status === "pending") {
+        html += `
+          <button class="btn btn-accept" onclick="acceptReq('${req.id}')">Accept</button>
+        `;
+      }
+
+      // Complete button (only if worker accepted)
+      if (d.status === "accepted" && d.assignedWorkerId === auth.currentUser.uid) {
+        html += `
+          <button class="btn btn-complete" onclick="completeReq('${req.id}')">✔ Complete</button>
+        `;
+      }
+
+      html += `</div>`;
+    });
+
+    document.getElementById("reqList").innerHTML = html || "<p>No emergency requests.</p>";
+
+    // Play alert sound ONLY for new requests, not old loads
+    if (newEmergency) {
+      document.getElementById("alertSound").play();
+    }
+
+    firstLoad = false;
+  });
+}
+
+
+// ========== ACCEPT EMERGENCY ==========
+window.acceptReq = async function (reqId) {
+  const workerId = auth.currentUser.uid;
+
+  await updateDoc(doc(db, "emergency_requests", reqId), {
+    status: "accepted",
+    assignedWorkerId: workerId
+  });
+
+  alert("Emergency request accepted!");
+};
+
+
+// ========== COMPLETE EMERGENCY ==========
+window.completeReq = async function (reqId) {
+  await updateDoc(doc(db, "emergency_requests", reqId), {
+    status: "completed"
+  });
+
+  alert("Emergency marked as completed!");
+};
+
+</script>
+
+</body>
+</html>
